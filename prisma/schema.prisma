@@ -1,0 +1,169 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Anime {
+  id               String       @id @default(uuid())
+  slug             String       @unique
+  title            String
+  alternativeTitle String?
+  japaneseTitle    String?
+  poster           String?
+  posterLocal      String?      // e.g. /public/posters/slug.jpg
+  synopsis         String?      @db.Text
+  status           String?      // e.g. Ongoing, Completed
+  type             String?      // e.g. TV, Movie, OVA, ONA
+  score            Float?
+  rating           String?      // e.g. PG-13, R-17+
+  duration         String?      // e.g. 24 min.
+  totalEpisodes    Int?
+  latestEpisode    String?
+  season           String?      // e.g. Fall 1999
+  releaseYear      Int?
+  studio           String?
+  producers        String?
+  releasedAt       String?      // e.g. Oct 20, 1999
+  sourceUrl        String
+  contentHash      String?      // Fingerprint for change detection
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  lastSyncedAt     DateTime?
+
+  episodes         Episode[]
+  genres           AnimeGenre[]
+  batches          Batch[]
+  schedules        Schedule[]
+
+  @@index([slug])
+  @@index([title])
+  @@index([status])
+  @@index([type])
+  @@index([score])
+  @@index([releaseYear])
+  @@map("animes")
+}
+
+model Episode {
+  id            String         @id @default(uuid())
+  animeId       String
+  slug          String         @unique
+  episodeNumber Float?
+  title         String
+  thumbnail     String?
+  sourceUrl     String
+  releasedAt    String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  lastSyncedAt  DateTime?
+
+  anime         Anime          @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  servers       StreamServer[]
+
+  @@index([animeId])
+  @@index([slug])
+  @@index([episodeNumber])
+  @@map("episodes")
+}
+
+model Genre {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  animes    AnimeGenre[]
+
+  @@index([slug])
+  @@map("genres")
+}
+
+model AnimeGenre {
+  animeId String
+  genreId String
+
+  anime   Anime @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([animeId, genreId])
+  @@index([animeId])
+  @@index([genreId])
+  @@map("anime_genres")
+}
+
+model Batch {
+  id            String    @id @default(uuid())
+  animeId       String?
+  slug          String    @unique
+  title         String
+  sourceUrl     String
+  downloadLinks Json?     // Array of download categories, resolutions, and host links
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastSyncedAt  DateTime?
+
+  anime         Anime?    @relation(fields: [animeId], references: [id], onDelete: SetNull)
+
+  @@index([slug])
+  @@index([animeId])
+  @@map("batches")
+}
+
+model Schedule {
+  id        String   @id @default(uuid())
+  animeId   String
+  day       String   // e.g. Monday, Tuesday, Sunday
+  time      String?  // e.g. 02:30
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([animeId, day])
+  @@index([day])
+  @@index([animeId])
+  @@map("schedules")
+}
+
+model StreamServer {
+  id        String    @id @default(uuid())
+  episodeId String
+  name      String    // e.g. Blogspot, VIP STREAMING, Wibufile 720p
+  serverKey String    // e.g. player-option-1 or nume value
+  embedUrl  String?   @db.Text
+  type      String?   // e.g. schtml, embed
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  episode   Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([episodeId])
+  @@index([serverKey])
+  @@map("stream_servers")
+}
+
+model SyncState {
+  id             String    @id @default(uuid())
+  job            String    @unique // e.g. sync:recent, sync:ongoing, sync:all
+  lastStartedAt  DateTime?
+  lastCompletedAt DateTime?
+  lastSuccessAt  DateTime?
+  lastFailureAt  DateTime?
+  status         String    @default("IDLE") // IDLE, RUNNING, SUCCESS, FAILED
+  error          String?   @db.Text
+  itemsProcessed Int       @default(0)
+  itemsCreated   Int       @default(0)
+  itemsUpdated   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([job])
+  @@map("sync_states")
+}

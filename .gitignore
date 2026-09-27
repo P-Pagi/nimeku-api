@@ -1,0 +1,67 @@
+﻿# ────────────────────────────────────────────────
+#  Node.js API — nimeku-api
+# ────────────────────────────────────────────────
+
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Build output
+/dist/
+/build/
+/out/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Environment variables — NEVER commit these!
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env*.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.sw?
+
+# Redis / cache dumps
+dump.rdb
+*.rdb
+
+# BullMQ / worker temp
+.bullmq/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temp / scratch
+tmp/
+temp/
+scratch/
+
+# Docker
+.docker/

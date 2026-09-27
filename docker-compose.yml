@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: samehadaku-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: samehadaku
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d samehadaku"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: samehadaku-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: samehadaku-api
+    restart: unless-stopped
+    command: ["node", "dist/index.js"]
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      SOURCE_BASE_URL: https://v2.samehadaku.how
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/samehadaku?schema=public
+      REDIS_URL: redis://redis:6379
+      ADMIN_API_KEY: samehadaku-admin-secret-key-32chars
+      SCRAPER_MAX_CONCURRENCY: 2
+      SCRAPER_MIN_DELAY_MS: 1000
+      ENABLE_PLAYWRIGHT_FALLBACK: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: samehadaku-worker
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      SOURCE_BASE_URL: https://v2.samehadaku.how
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/samehadaku?schema=public
+      REDIS_URL: redis://redis:6379
+      SCRAPER_MAX_CONCURRENCY: 2
+      SCRAPER_MIN_DELAY_MS: 1000
+      SYNC_RECENT: "*/10 * * * *"
+      SYNC_SCHEDULE: "0 * * * *"
+      SYNC_GENRES: "0 3 * * *"
+      ENABLE_PLAYWRIGHT_FALLBACK: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
